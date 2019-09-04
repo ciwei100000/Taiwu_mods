@@ -208,7 +208,7 @@ namespace GongFaBook
         {
             if (Main.enabled && skillTyp != 0 && skillTyp == 1)
             {
-                actorId = (actorId != -1) ? actorId : ((!ActorMenu.instance.actorMenu.activeInHierarchy) ? DateFile.instance.MianActorID() : ActorMenu.instance.acotrId);
+                actorId = (actorId != -1) ? actorId : ((!ActorMenu.instance.actorMenu.activeInHierarchy) ? DateFile.instance.MianActorID() : ActorMenu.instance.actorId);
                 int gongFaFLevel = (levelTyp != -1 && levelTyp != 0) ? 10 : ((skillId != 0) ? DateFile.instance.GetGongFaFLevel(actorId, skillId) : 0);
                 // 心法正/逆类型
                 int gongFaFTyp = DateFile.instance.GetGongFaFTyp(actorId, skillId);

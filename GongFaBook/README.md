@@ -10,6 +10,9 @@ by [夏野ky](https://bbs.nga.cn/nuke.php?func=ucp&uid=42504349)
 - 补充功法树显示，支持显示不传之秘
 
 ## Change Log
+### 1.10.0
+by ciwei100000
+- 支持游戏版本 v0.2.5.10
 ### 1.0.9
 by [ciwei100000](https://bbs.nga.cn/nuke.php?func=ucp&uid=60320341)
 - 支持游戏版本 V0.2.3.1
