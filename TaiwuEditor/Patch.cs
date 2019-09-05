@@ -1,5 +1,4 @@
-﻿#define DEBUG
-using Harmony12;
+﻿using Harmony12;
 using System;
 using System.Collections.Generic;
 
