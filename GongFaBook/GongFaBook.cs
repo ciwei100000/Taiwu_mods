@@ -29,7 +29,17 @@ namespace GongFaBook
         {
             Logger = modEntry.Logger;
             settings = UnityModManager.ModSettings.Load<Settings>(modEntry);
-            HarmonyInstance.Create(modEntry.Info.Id).PatchAll(Assembly.GetExecutingAssembly());
+            var harmony = HarmonyInstance.Create(modEntry.Info.Id);
+            harmony.PatchAll(Assembly.GetExecutingAssembly());
+            /// 修复调用<see cref="ActorMenu.instance"/>时，人物窗口自动打开造成错误
+            /// 只在其他mod没有修补这个bug时加载补丁，防止重复加载。
+            var actorMenuAwake = typeof(ActorMenu).GetMethod("Awake", BindingFlags.NonPublic | BindingFlags.Instance);
+            var postFixes = harmony.GetPatchInfo(actorMenuAwake)?.Postfixes;
+            if (postFixes == null || postFixes.Count == 0)
+            {
+                var patchedPostfix = new HarmonyMethod(typeof(ActorMenu_Awake_Patch), "Postfix", new[] { typeof(ActorMenu) });
+                harmony.Patch(actorMenuAwake, null, patchedPostfix);
+            }
             modEntry.OnToggle = OnToggle;
             modEntry.OnGUI = OnGUI;
             modEntry.OnSaveGUI = OnSaveGUI;
@@ -248,6 +258,23 @@ namespace GongFaBook
                     ___informationMassage.text = ___baseGongFaMassage = str.ToString();
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// 防止首次调用ActorMenu.instance时自动打开角色菜单造成错误
+    /// </summary>
+    /// /// <remarks>用<see cref="HarmonyInstance.Patch"/>加载，只在其他mod没有patch这个方法
+    /// 时使用，避免重复加载
+    /// </remarks>
+    internal static class ActorMenu_Awake_Patch
+    {
+        public static void Postfix(ActorMenu __instance)
+        {
+#if DEBUG
+            Main.Logger.Log("GongFaBook.ActorMenu_Awake_Patch patched");
+#endif
+            __instance.actorMenu.SetActive(false);
         }
     }
 }
