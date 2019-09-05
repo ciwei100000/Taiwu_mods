@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using UnityEngine;
-using UnityModManagerNet;
 
 namespace TaiwuEditor
 {
-    internal abstract class Helper
+    internal abstract class HelperBase
     {
         protected static readonly Dictionary<int, string> textColors = new Dictionary<int, string>
         {
@@ -30,7 +28,8 @@ namespace TaiwuEditor
             { 20008, "<color=#E3C66DFF>" }, // 三品黄
             { 20009, "<color=#F28234FF>" }, // 二品橙
             { 20010, "<color=#E4504DFF>" }, // 一品红
-            { 20011, "<color=#EDA723FF>" }
+            { 20011, "<color=#EDA723FF>" },
+            { -1, "</color>" }
         };
         /// <summary>标签的样式</summary>
         public static GUIStyle LabelStyle { get; set; }
@@ -40,12 +39,10 @@ namespace TaiwuEditor
         public static GUIStyle TextFieldStyle { get; set; }
         /// <summary>选项的样式</summary>
         public static GUIStyle ToggleStyle { get; set; }
-        /// <summary>日志</summary>
-        protected UnityModManager.ModEntry.ModLogger logger;
         /// <summary>当前编辑的角色ID</summary>
         protected int currentActorId = -1;
 
-        protected Helper(UnityModManager.ModEntry.ModLogger logger) => this.logger = logger;
+        protected HelperBase() { }
 
         public abstract void Update(int actorId);
 
@@ -59,7 +56,10 @@ namespace TaiwuEditor
         public static void CureHelper(DateFile instance, int actorId, int func, bool battle = true)
         {
             if (instance == null)
+            {
                 return;
+            }
+
             switch (func)
             {
                 case 0:
@@ -238,7 +238,7 @@ namespace TaiwuEditor
                         if (isShouChao != 0)
                         {
                             //增加内息紊乱
-                            ActorMenu.instance.ChangeMianQi(mainActorId, 50 * scoreGain, 5);
+                            DateFile.instance.ChangeMianQi(mainActorId, 50 * scoreGain, 5);
                         }
                         // 该篇已经阅读完毕
                         DateFile.instance.gongFaBookPages[gongFaId][j] = 1;
@@ -320,7 +320,7 @@ namespace TaiwuEditor
         /// <param name="storysystemplaceid">当前奇遇发生的地点位置ID</param>
         /// <param name="storysystemstoryId">当前奇遇ID</param>
         /// <returns>是否成功</returns>
-        // Inspired by DateFile.EventSetup()
+        /// Inspired by <see cref="StorySystem.EventSetup"/>
         public static bool EventSetup(int endeventid, int storysystempartid, int storysystemplaceid, int storysystemstoryId)
         {
             if (endeventid != 0)
@@ -425,6 +425,7 @@ namespace TaiwuEditor
                         }, true, true);
                         break;
                 }
+                GEvent.OnEvent(eEvents.StoryEndEvent, StorySystem.instance.storySystemStoryId, endeventid);
                 return true;
             }
             else
@@ -442,11 +443,10 @@ namespace TaiwuEditor
         /// <param name="integer">输出的整型</param>
         /// <returns>是否成功</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool TryParseInt(string text, out int integer)
-            => int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out integer);
+        public static bool TryParseInt(string text, out int integer) => int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out integer);
     }
 
-    static class ExtendedMethods
+    internal static class ExtendedMethods
     {
         /// <summary>
         /// 尝试获取两个嵌套字典中位于内部的字典的值
@@ -490,11 +490,11 @@ namespace TaiwuEditor
             where TValue1 : IDictionary<Tkey2, string>
         {
             value = -1;
-            return iDictionary.TryGetValue(key1, out var value1) && value1.TryGetValue(key2, out string text) && Helper.TryParseInt(text, out value);
+            return iDictionary.TryGetValue(key1, out var value1) && value1.TryGetValue(key2, out string text) && HelperBase.TryParseInt(text, out value);
         }
 
         /// <summary>
-        /// 尝试根据键值获取值,并将值转换为整
+        /// 尝试根据键值获取值,并将值转换为整型
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <typeparam name="Tkey"></typeparam>
@@ -507,12 +507,12 @@ namespace TaiwuEditor
         public static bool TryGetValue<T, Tkey>(this T iDictionary, Tkey key, out int value) where T : IDictionary<Tkey, string>
         {
             value = -1;
-            return iDictionary.TryGetValue(key, out string text) && Helper.TryParseInt(text, out value);
+            return iDictionary.TryGetValue(key, out string text) && HelperBase.TryParseInt(text, out value);
         }
     }
 
     // 借用Sth4nothing的反射类
-    static class ReflectionMethod
+    internal static class ReflectionMethod
     {
         private const BindingFlags Flags = BindingFlags.Instance
                                            | BindingFlags.Static
@@ -528,8 +528,7 @@ namespace TaiwuEditor
         /// <param name="method">类实例方法的名称</param>
         /// <param name="args">类实例方法的参数</param>
         /// <returns>方法返回值</returns>
-        public static TResult Invoke<TSource, TResult>(this TSource instance, string method, params object[] args)
-            => (TResult)typeof(TSource).GetMethod(method, Flags)?.Invoke(instance, args);
+        public static TResult Invoke<TSource, TResult>(this TSource instance, string method, params object[] args) => (TResult)typeof(TSource).GetMethod(method, Flags)?.Invoke(instance, args);
 
         /// <summary>
         /// 调用实例中的方法
@@ -538,8 +537,7 @@ namespace TaiwuEditor
         /// <param name="instance">类实例</param>
         /// <param name="method">类实例方法的名称</param>
         /// <param name="args">类实例方法的参数</param>
-        public static void Invoke<T>(this T instance, string method, params object[] args)
-            => typeof(T).GetMethod(method, Flags)?.Invoke(instance, args);
+        public static void Invoke<T>(this T instance, string method, params object[] args) => typeof(T).GetMethod(method, Flags)?.Invoke(instance, args);
 
         /// <summary>
         /// 调用实例中的方法并返回结果
@@ -556,7 +554,10 @@ namespace TaiwuEditor
             var methods = typeof(T).GetMethods(Flags).Where(m =>
             {
                 if (m.Name != method)
+                {
                     return false;
+                }
+
                 return m.GetParameters()
                     .Select(p => p.ParameterType)
                     .SequenceEqual(argTypes);
@@ -578,8 +579,7 @@ namespace TaiwuEditor
         /// <param name="instance">类实例</param>
         /// <param name="field"></param>
         /// <returns>域的值</returns>
-        public static TResult GetValue<TSource, TResult>(this TSource instance, string field)
-            => (TResult)typeof(TSource).GetField(field, Flags)?.GetValue(instance);
+        public static TResult GetValue<TSource, TResult>(this TSource instance, string field) => (TResult)typeof(TSource).GetField(field, Flags)?.GetValue(instance);
 
         /// <summary>
         /// 获取类实例中域(Field)的值
@@ -588,7 +588,6 @@ namespace TaiwuEditor
         /// <param name="instance">类实例</param>
         /// <param name="field">域名称</param>
         /// <returns>域的值</returns>
-        public static object GetValue<T>(this T instance, string field)
-            => typeof(T).GetField(field, Flags)?.GetValue(instance);
+        public static object GetValue<T>(this T instance, string field) => typeof(T).GetField(field, Flags)?.GetValue(instance);
     }
 }

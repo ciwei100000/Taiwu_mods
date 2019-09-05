@@ -8,16 +8,28 @@ using System.Runtime.CompilerServices;
 
 namespace TaiwuEditor
 {
-    public static partial class Main
+    public static class Main
     {
-        public static readonly string version = "V1.0.10.2";
-        public static bool enabled;
-        private static UnityModManager.ModEntry.ModLogger logger;
+        /// <summary>版本</summary>
+        public static readonly string version = "V1.0.11";
+        /// <summary>是否启用</summary>
+        internal static bool enabled;
+        /// <summary>日志</summary>
+        internal static UnityModManager.ModEntry.ModLogger logger;
+        /// <summary>太吾修改器的参数</summary>
+        internal static Settings settings;
+        /// <summary>用于锁定每月行动点数的计时器</summary>
         private static Timer timer;
-        private static Settings settings;
+        /// <summary>UI类是否已经创建</summary>
         private static bool uiIsShow = false;
+        /// <summary>是否为热键修改模式</summary>
         private static bool bindingKey = false;
 
+        /// <summary>
+        /// UMM的MOD载入接口
+        /// </summary>
+        /// <param name="modEntry"></param>
+        /// <returns></returns>
         public static bool Load(UnityModManager.ModEntry modEntry)
         {
             settings = UnityModManager.ModSettings.Load<Settings>(modEntry);
@@ -27,10 +39,20 @@ namespace TaiwuEditor
             modEntry.OnSaveGUI = OnSaveGUI;
             modEntry.OnToggle = OnToggle;
 
-            if (!uiIsShow && UI.Load(modEntry, settings))
+            if (!uiIsShow && UI.Load(settings))
             { 
                 uiIsShow = true;
-                HarmonyInstance.Create(modEntry.Info.Id).PatchAll(Assembly.GetExecutingAssembly());
+                var harmony = HarmonyInstance.Create(modEntry.Info.Id);
+                harmony.PatchAll(Assembly.GetExecutingAssembly());
+                /// 修复调用<see cref="ActorMenu.instance"/>时，人物窗口自动打开造成错误
+                /// 只在其他mod没有修补这个bug时加载补丁，防止重复加载。
+                var actorMenuAwake = typeof(ActorMenu).GetMethod("Awake", BindingFlags.NonPublic | BindingFlags.Instance);
+                var postFixes = harmony.GetPatchInfo(actorMenuAwake)?.Postfixes;
+                if (postFixes == null || postFixes.Count == 0)
+                {
+                    var patchedPostfix = new HarmonyMethod(typeof(Patch.ActorMenu_Awake_Hook), "Postfix", new[] { typeof(ActorMenu) });
+                    harmony.Patch(actorMenuAwake, null, patchedPostfix);
+                }
                 // 用于锁定每月行动点数（每秒重置一次行动点数）
                 timer = new Timer(1000);
                 timer.Elapsed += DayTimeLock;
@@ -40,7 +62,7 @@ namespace TaiwuEditor
             return uiIsShow;
         }
         
-        public static bool OnToggle(UnityModManager.ModEntry modEntry, bool value)
+        private static bool OnToggle(UnityModManager.ModEntry modEntry, bool value)
         {
             enabled = value;
             return true;
@@ -55,7 +77,7 @@ namespace TaiwuEditor
         /// UMM中的设置界面
         /// </summary>
         /// <param name="modEntry"></param>
-        public static void OnGUI(UnityModManager.ModEntry modEntry)
+        private static void OnGUI(UnityModManager.ModEntry modEntry)
         {
             Event e = Event.current;
             if (e.isKey && Input.anyKeyDown)

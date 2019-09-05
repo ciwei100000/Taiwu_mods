@@ -1,11 +1,10 @@
 ﻿using System;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityModManagerNet;
 
 namespace TaiwuEditor
 {
-    class UI : MonoBehaviour
+    internal class UI : MonoBehaviour
     {
         #region Constant
         /// <summary>窗口背景图</summary>
@@ -78,8 +77,6 @@ namespace TaiwuEditor
         public static UI Instance { get; private set; }
         #endregion
 
-        //logger
-        public static UnityModManager.ModEntry.ModLogger logger;
         /// <summary>太吾修改器的参数</summary>
         private static Settings modSettings;
 
@@ -102,10 +99,6 @@ namespace TaiwuEditor
         private float closeBtnWidth = closeBtnWidthBase;
         /// <summary>屏蔽游戏界面的幕布</summary>
         private GameObject mCanvas;
-        /// <summary>修改器修改角色属性功能类的实例</summary>
-        private ActorPropertyHelper actorPropertyHelper;
-        /// <summary>修改器修改角色功法功能类的实例</summary>
-        private GongFaHelper gongFaHelper;
         /// <summary>功能选择，0是基本功能，1是修改属性</summary>
         private int funcChoose = 0;
         /// <summary>选择修改哪个人物的属性，0太吾，1上一个打开菜单的人物，2自定义人物</summary>
@@ -128,7 +121,7 @@ namespace TaiwuEditor
         private Rect rectListView;
         private Rect rectListViewGroupTop;
         private Rect rectListViewGroupBottom;
-        private int listItemCount = 4;
+        private readonly int listItemCount = 4;
         private Vector2 scrollPosition2;
         #endregion
 
@@ -143,12 +136,11 @@ namespace TaiwuEditor
         /// <param name="modEntry"></param>
         /// <param name="instance">太吾修改器MOD参数的实例</param>
         /// <returns></returns>
-        internal static bool Load(UnityModManager.ModEntry modEntry, Settings instance)
+        internal static bool Load(Settings instance)
         {
-            logger = modEntry.Logger;
             if (instance == null)
             {
-                logger.Log("[TaiwuEditor] UI.Load() Settings instance is null");
+                Main.logger.Log("[TaiwuEditor] UI.Load() Settings instance is null");
                 return false;
             }
             try
@@ -161,15 +153,15 @@ namespace TaiwuEditor
                     windowTexture = new Texture2D(2, 2);
                     if (!windowTexture.LoadImage(Convert.FromBase64String(windowBase64)))
                     {
-                        logger.Log("[TaiwuEditor]UI Background Texture Loading Failure");
+                        Main.logger.Log("[TaiwuEditor]UI Background Texture Loading Failure");
                     }
                     return true;
                 }
             }
             catch (Exception e)
             {
-                logger.Log("[TaiwuEditor]UI Loading Failure");
-                logger.Log(e.ToString());
+                Main.logger.Log("[TaiwuEditor]UI Loading Failure");
+                Main.logger.Log(e.ToString());
             }
             return false;
         }
@@ -181,8 +173,6 @@ namespace TaiwuEditor
         {
             Instance = this;
             DontDestroyOnLoad(this);
-            actorPropertyHelper = new ActorPropertyHelper(logger);
-            gongFaHelper = new GongFaHelper(logger);
         }
 
         /// <summary>
@@ -200,8 +190,8 @@ namespace TaiwuEditor
         private void Update()
         {
             if (Opened)
-            {    
-                actorPropertyHelper.Update(actorId);
+            {
+                ActorPropertyHelper.Instance.Update(actorId);
             }
 
             if (Input.GetKeyUp(modSettings.hotKey))
@@ -241,7 +231,8 @@ namespace TaiwuEditor
             // 根据DPI调整窗口参数，ratio = 当前窗口宽度/1600，不小于1
             float ratio = Math.Max(Screen.width * 0.000625f, 1f);
             mWindowWidth = windowWidthBase * ratio;
-            mWindowRect.x = ((float)Screen.width - mWindowWidth) * 0.5f;
+            // 根据屏幕分辨率大小调整窗口位置
+            mWindowRect.x = (Screen.width - mWindowWidth) * 0.5f;
             // 根据DPI调整字体大小
             normalFontSize = (int)(normalFontSizeBase * ratio);
             if (!isAdjust)
@@ -268,9 +259,9 @@ namespace TaiwuEditor
             healthButtonWidth = healthButtonWidthBase * ratio;
             idFieldWidth = idFieldWidthBase * ratio;
             closeBtnWidth = closeBtnWidthBase * ratio;
-            actorPropertyHelper.fieldHelperBtnWidth = fieldHelperBtnWidthBase * ratio;
-            actorPropertyHelper.fieldHelperLblWidth = fieldHelperLblWidthBase * ratio;
-            actorPropertyHelper.fieldHelperTextWidth = fieldHelperTextWidthBase * ratio;
+            ActorPropertyHelper.fieldHelperBtnWidth = fieldHelperBtnWidthBase * ratio;
+            ActorPropertyHelper.fieldHelperLblWidth = fieldHelperLblWidthBase * ratio;
+            ActorPropertyHelper.fieldHelperTextWidth = fieldHelperTextWidthBase * ratio;
         }
 
         /// <summary>
@@ -350,11 +341,12 @@ namespace TaiwuEditor
                 fontSize = normalFontSize - 2,
                 fontStyle = FontStyle.Bold
             };
-            // 初始化修改框相关样式
-            Helper.ButtonStyle = buttonStyle;
-            Helper.TextFieldStyle = textFieldStyle;
-            Helper.LabelStyle = labelStyle;
-            Helper.ToggleStyle = toggleStyle;
+            // 初始化相关样式
+            HelperBase.ButtonStyle = buttonStyle;
+            HelperBase.TextFieldStyle = textFieldStyle;
+            HelperBase.LabelStyle = labelStyle;
+            HelperBase.ToggleStyle = toggleStyle;
+            DropDownMenu.MenuItemStyle = labelStyle;
         }
 
         /// <summary>
@@ -392,7 +384,7 @@ namespace TaiwuEditor
             // 每次功能界面切换重置各修改框内的数值为游戏数值
             if (funcChoose != funcChooseTmp && funcChoose == 1)
             {
-                actorPropertyHelper.SetAllFieldsNeedToUpdate();
+                ActorPropertyHelper.Instance.SetAllFieldsNeedToUpdate();
             }
             funcChoose = funcChooseTmp;
             GUILayout.Space(5f);
@@ -405,9 +397,9 @@ namespace TaiwuEditor
                 case 1:
                     BasicPropertiesUI();
                     break;
-                /*case 2:
+                case 2:
                     GongFaEditorUI();
-                    break;*/
+                    break;
             }
         }
 
@@ -456,10 +448,10 @@ namespace TaiwuEditor
                             string choiceName = modSettings.GetLockValueName(choice);
                             GUILayout.Label($"自定义最大{choiceName}(范围0-100)\n<color=#F28234>设置为0则根据剑冢世界进度自动设定最大{choiceName}(推荐)</color>", labelStyle);
                             GUILayout.BeginHorizontal();
-                            tmpCustomLockValue[choice] = GUILayout.TextField(tmpCustomLockValue[choice], textFieldStyle, GUILayout.Width(actorPropertyHelper.fieldHelperTextWidth));
-                            if (GUILayout.Button("确定", buttonStyle, GUILayout.Width(actorPropertyHelper.fieldHelperBtnWidth)))
+                            tmpCustomLockValue[choice] = GUILayout.TextField(tmpCustomLockValue[choice], textFieldStyle, GUILayout.Width(ActorPropertyHelper.fieldHelperTextWidth));
+                            if (GUILayout.Button("确定", buttonStyle, GUILayout.Width(ActorPropertyHelper.fieldHelperBtnWidth)))
                             {
-                                if (Helper.TryParseInt(tmpCustomLockValue[choice], out int value))
+                                if (HelperBase.TryParseInt(tmpCustomLockValue[choice], out int value))
                                 {
                                     modSettings.customLockValue[choice] = value;
                                 }
@@ -498,7 +490,7 @@ namespace TaiwuEditor
             }, 3, buttonStyle, GUILayout.Width(mWindowWidth));
             if (basePropertyChoose != basePropertyChooseTmp)
             {
-                actorPropertyHelper.SetAllFieldsNeedToUpdate();
+                ActorPropertyHelper.Instance.SetAllFieldsNeedToUpdate();
                 if (basePropertyChooseTmp == 2)
                 {
                     displayedActorId = actorId.ToString();
@@ -519,11 +511,11 @@ namespace TaiwuEditor
             scrollPosition[1] = GUILayout.BeginScrollView(scrollPosition[1], GUILayout.MinWidth(mWindowWidth));
             ModData(instance);
             GUILayout.EndScrollView();
-            if (Event.current.type == EventType.Repaint)
+            /*if (Event.current.type == EventType.Repaint)
             {
                 var tmpRect = GUILayoutUtility.GetLastRect();
-                logger.Log($"tmprect2: {tmpRect.x} {tmpRect.y} {tmpRect.height} {tmpRect.width}");
-            }
+                Main.logger.Log($"tmprect2: {tmpRect.x} {tmpRect.y} {tmpRect.height} {tmpRect.width}");
+            }*/
         }
 
         private void GongFaEditorUI()
@@ -535,8 +527,8 @@ namespace TaiwuEditor
                 return;
             }
             GUILayout.BeginHorizontal();
-            gongFaHelper.Editor.GongFaEditBar();
-            gongFaHelper.Editor.GongFaAddBar();
+            GongFaHelper.Instance.Editor.GongFaEditBar();
+            GongFaHelper.Instance.Editor.GongFaAddBar();
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             scrollPosition[2] = GUILayout.BeginScrollView(scrollPosition[2], GUILayout.MinWidth(mWindowWidth * 0.5f));
@@ -557,9 +549,9 @@ namespace TaiwuEditor
             {
                 // 修改上次打开人物菜单的人物
                 case 1:
-                    if (ActorMenu.instance != null && ActorMenu.instance.acotrId > -1)
+                    if (ActorMenu.instance != null && ActorMenu.instance.actorId > -1)
                     {
-                        actorId = (ActorMenu.instance.acotrId == 0) ? instance.mianActorId : ActorMenu.instance.acotrId;
+                        actorId = (ActorMenu.instance.actorId == 0) ? instance.mianActorId : ActorMenu.instance.actorId;
                         GUILayout.Box($"{actorId}", boxStyle, GUILayout.Width(idFieldWidth));
                     }
                     break;
@@ -569,7 +561,7 @@ namespace TaiwuEditor
                         displayedActorId = GUILayout.TextField(displayedActorId, textFieldStyle, GUILayout.Width(idFieldWidth));
                         if (GUILayout.Button("确定", buttonStyle, GUILayout.Width(idFieldWidth)))
                         {
-                            if (Helper.TryParseInt(displayedActorId, out int parsedValue) && parsedValue > -1)
+                            if (HelperBase.TryParseInt(displayedActorId, out int parsedValue) && parsedValue > -1)
                             {
                                 actorId = (parsedValue == 0) ? instance.mianActorId : parsedValue;
                             }
@@ -599,7 +591,7 @@ namespace TaiwuEditor
             {
                 if (GUILayout.Button(dataTabNames[k], propertiesUIButtonStyle, GUILayout.ExpandWidth(true)))
                 {
-                    actorPropertyHelper.SetAllFieldsNeedToUpdate();
+                    ActorPropertyHelper.Instance.SetAllFieldsNeedToUpdate();
                     showTabDetails = (showTabDetails == k) ? (-1) : k;
                 }
 
@@ -627,9 +619,9 @@ namespace TaiwuEditor
                             if (actorId == instance.mianActorId)
                             {
                                 // 历练 此处resid无实际意义，在update()换算成对应的字段
-                                actorPropertyHelper.FieldHelper(-1);
+                                ActorPropertyHelper.Instance.FieldHelper(-1);
                                 // 无属性内力 id 44
-                                actorPropertyHelper.FieldHelper(706);
+                                ActorPropertyHelper.Instance.FieldHelper(706);
                                 GUILayout.Label("每10点无属性内力增加1点真气", labelStyle);
                             }
                             break;
@@ -643,11 +635,11 @@ namespace TaiwuEditor
                 }
             }
             GUILayout.EndVertical();
-            if (Event.current.type == EventType.Repaint)
+            /*if (Event.current.type == EventType.Repaint)
             {
                 var tmpRect = GUILayoutUtility.GetLastRect();
-                logger.Log($"tmprect1: {tmpRect.x} {tmpRect.y} {tmpRect.height} {tmpRect.width}");
-            }
+                Main.logger.Log($"tmprect1: {tmpRect.x} {tmpRect.y} {tmpRect.height} {tmpRect.width}");
+            }*/
 
         }
 
@@ -657,7 +649,7 @@ namespace TaiwuEditor
             {
                 if (listItemCount < dataTabNames.Length)
                 {
-                    logger.Log($"rect: {rect.x} {rect.y} {rect.height} {rect.width}");
+                    Main.logger.Log($"rect: {rect.x} {rect.y} {rect.height} {rect.width}");
                     //为了留出最方下的横线,这里高度减1
                     rectList = new Rect(rect.x, rect.y + rect.height, rect.width + 100, rect.height * listItemCount - 1);
                     rectListView = new Rect(rect.x, rect.y + rect.height, rect.width - GUI.skin.verticalScrollbar.fixedWidth, rect.height * dataTabNames.Length);
@@ -724,7 +716,7 @@ namespace TaiwuEditor
                 {
                     GUILayout.BeginVertical();
                 }
-                actorPropertyHelper.FieldHelper(resid);
+                ActorPropertyHelper.Instance.FieldHelper(resid);
                 // 已渲染行数是否已经符合该列行数要求，注：第一、二列有可能多出一行
                 if (rowCount == numRow + ((rest > 0) ? 1 : 0))
                 {
@@ -743,31 +735,31 @@ namespace TaiwuEditor
         {
             GUILayout.Label("<color=#F28234>注意：\n1.基础寿命为不含人物特性加成的寿命\n2. 人物健康修改为0后，过月就会死亡</color>", labelStyle);
             GUILayout.BeginHorizontal();
-            actorPropertyHelper.FieldHelper(11);
-            actorPropertyHelper.FieldHelper(13);
+            ActorPropertyHelper.Instance.FieldHelper(11);
+            ActorPropertyHelper.Instance.FieldHelper(13);
             if (ActorMenu.instance != null)
             {
-                actorPropertyHelper.FieldHelper(12, ActorMenu.instance.MaxHealth(actorId));
+                ActorPropertyHelper.Instance.FieldHelper(12, DateFile.instance.MaxHealth(actorId));
             }
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("一键疗伤", buttonStyle, GUILayout.Width(healthButtonWidth)))
             {
-                Helper.CureHelper(DateFile.instance, actorId, 0);
+                HelperBase.CureHelper(DateFile.instance, actorId, 0);
             }
             if (GUILayout.Button("一键祛毒", buttonStyle, GUILayout.Width(healthButtonWidth)))
             {
-                Helper.CureHelper(DateFile.instance, actorId, 1);
+                HelperBase.CureHelper(DateFile.instance, actorId, 1);
             }
             if (GUILayout.Button("一键调理内息", buttonStyle, GUILayout.Width(healthButtonWidth)))
             {
-                Helper.CureHelper(DateFile.instance, actorId, 2);
+                HelperBase.CureHelper(DateFile.instance, actorId, 2);
             }
             if (GUILayout.Button("我全部都要", buttonStyle, GUILayout.Width(healthButtonWidth)))
             {
-                Helper.CureHelper(DateFile.instance, actorId, 0);
-                Helper.CureHelper(DateFile.instance, actorId, 1);
-                Helper.CureHelper(DateFile.instance, actorId, 2);
+                HelperBase.CureHelper(DateFile.instance, actorId, 0);
+                HelperBase.CureHelper(DateFile.instance, actorId, 1);
+                HelperBase.CureHelper(DateFile.instance, actorId, 2);
             }
             GUILayout.EndHorizontal();
         }
@@ -779,7 +771,7 @@ namespace TaiwuEditor
         private void DisplayXXField(DateFile instance)
         {
             // 入邪值
-            int evilValue = Helper.LifeDateHelper(instance, actorId, 501);
+            int evilValue = HelperBase.LifeDateHelper(instance, actorId, 501);
             GUILayout.BeginHorizontal();
             GUILayout.Box("当前入邪值: ", boxStyle, GUILayout.Width(evilButtonWidth));
             if (evilValue == -1)
@@ -794,17 +786,17 @@ namespace TaiwuEditor
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("恢复正常", buttonStyle, GUILayout.Width(evilButtonWidth)))
                 {
-                    Helper.SetActorXXValue(instance, actorId, 0);
+                    HelperBase.SetActorXXValue(instance, actorId, 0);
                 }
                 if (GUILayout.Button("相枢入邪", buttonStyle, GUILayout.Width(evilButtonWidth)))
                 {
-                    Helper.SetActorXXValue(instance, actorId, 100);
+                    HelperBase.SetActorXXValue(instance, actorId, 100);
                 }
                 if (actorId != 0 && actorId != instance.mianActorId)
                 {
                     if (GUILayout.Button("相枢化魔", buttonStyle, GUILayout.Width(evilButtonWidth)))
                     {
-                        Helper.SetActorXXValue(instance, actorId, 200);
+                        HelperBase.SetActorXXValue(instance, actorId, 200);
                     }
                 }
                 GUILayout.EndHorizontal();
@@ -827,7 +819,7 @@ namespace TaiwuEditor
             {
                 CalculateWindowPos(true);
                 UpdateTmpValue();
-                actorPropertyHelper.SetAllFieldsNeedToUpdate();
+                ActorPropertyHelper.Instance.SetAllFieldsNeedToUpdate();
             }
         }
 
@@ -842,7 +834,7 @@ namespace TaiwuEditor
                 // 屏蔽游戏界面
                 mCanvas = new GameObject("TEGameUIBlocker", typeof(Canvas), typeof(GraphicRaycaster));
                 mCanvas.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
-                mCanvas.GetComponent<Canvas>().sortingOrder = Int16.MaxValue;
+                mCanvas.GetComponent<Canvas>().sortingOrder = short.MaxValue;
                 DontDestroyOnLoad(mCanvas);
                 var panel = new GameObject("TEGameUIBlockerPanel", typeof(Image));
                 panel.transform.SetParent(mCanvas.transform);

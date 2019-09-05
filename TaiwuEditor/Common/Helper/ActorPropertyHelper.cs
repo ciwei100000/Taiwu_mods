@@ -2,11 +2,13 @@
 using System.Runtime.CompilerServices;
 
 using UnityEngine;
-using UnityModManagerNet;
 
 namespace TaiwuEditor
 {
-    class ActorPropertyHelper : Helper
+    /// <summary>
+    /// 角色属性修改工具类
+    /// </summary>
+    class ActorPropertyHelper : HelperBase
     {
         private const string errorString = "无人物数据";
         /// <summary>属性ID名称</summary>
@@ -61,18 +63,29 @@ namespace TaiwuEditor
             {614, "乐器"},
             {706, "无属性内力"}
         };
+        private static ActorPropertyHelper instance;
         /// <summary>修改框数值缓存</summary>
         private readonly Dictionary<int, string> fieldValuesCache;
         /// <summary>当前编辑的角色在游戏中的数据</summary>
         private Dictionary<int, string> currentActorDate;
         /// <summary>修改框标签宽度</summary>
-        public float fieldHelperLblWidth = 90f;
+        public static float fieldHelperLblWidth = 90f;
         /// <summary>修改框宽度</summary>
-        public float fieldHelperTextWidth = 120f;
+        public static float fieldHelperTextWidth = 120f;
         /// <summary>修改框修改按钮宽度</summary>
-        public float fieldHelperBtnWidth = 80f;
+        public static float fieldHelperBtnWidth = 80f;
 
-        public ActorPropertyHelper(UnityModManager.ModEntry.ModLogger logger) : base(logger)
+        public static ActorPropertyHelper Instance
+        {
+            get
+            {
+                if (instance == null)
+                    instance = new ActorPropertyHelper();
+                return instance;
+            }
+        }
+
+        protected ActorPropertyHelper()
         {
             fieldValuesCache = new Dictionary<int, string>(fieldNames.Count);
         }
@@ -215,8 +228,7 @@ namespace TaiwuEditor
         private void UpdateAllFields(int actorId)
         {
             var dateFile = DateFile.instance;
-            var actorMenu = ActorMenu.instance;
-            if (dateFile == null || dateFile.actorsDate == null || actorMenu == null
+            if (dateFile == null || dateFile.actorsDate == null
                 || !dateFile.actorsDate.TryGetValue(actorId, out currentActorDate))
             {
                 if (fieldValuesCache.Count > 0)
@@ -231,7 +243,7 @@ namespace TaiwuEditor
                 currentActorId = actorId;
                 foreach (var field in fieldNames)
                 {
-                    FetchFieldValueHelper(dateFile, actorMenu, currentActorDate, field.Key);
+                    FetchFieldValueHelper(dateFile, currentActorDate, field.Key);
                 }
             }
         }
@@ -255,7 +267,7 @@ namespace TaiwuEditor
             }
             else
             {
-                FetchFieldValueHelper(dateFile, actorMenu, currentActorDate, resid);
+                FetchFieldValueHelper(dateFile, currentActorDate, resid);
             }
         }
 
@@ -267,7 +279,7 @@ namespace TaiwuEditor
         /// <param name="actorDate">不能为null</param>
         /// <param name="resid"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void FetchFieldValueHelper(DateFile dateFileInstance, ActorMenu actorMenuInstance, Dictionary<int, string> actorDate, int resid)
+        private void FetchFieldValueHelper(DateFile dateFileInstance, Dictionary<int, string> actorDate, int resid)
         {
             switch (resid)
             {
@@ -275,7 +287,7 @@ namespace TaiwuEditor
                     fieldValuesCache[resid] = dateFileInstance.gongFaExperienceP.ToString();
                     break;
                 case 12: // 获取健康数据
-                    fieldValuesCache[resid] = actorMenuInstance.Health(currentActorId).ToString();
+                    fieldValuesCache[resid] = dateFileInstance.Health(currentActorId).ToString();
                     break;
                 default:
                     if (!actorDate.TryGetValue(resid, out string text))
