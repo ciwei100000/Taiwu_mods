@@ -190,8 +190,8 @@ namespace TaiwuEditor
                 /// 返回的，防止奇遇终点是战斗时，无限进入战斗。
                 if (___keepHiding)
                 {
-                    ___keepHiding = false;
-                    return false;
+                    //___keepHiding = false;
+                    return true;
                 }
 
                 int storyId = __instance.storySystemStoryId;
