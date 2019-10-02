@@ -256,11 +256,6 @@
 			"DownloadUrl": "https://github.com/phorcys/Taiwu_mods/releases/download/rls181225/TaiwuBaseClass-0.0.0.zip"
 		},
 		{
-			"Id": "TaiwuEditor",
-			"Version": "1.0.8",
-			"DownloadUrl": "https://img.nga.178.com/attachments/mon_201812/25/heQ5-2eacK6.zip?filename=TaiwuEditor-1.0.8r.zip"
-		},
-		{
 			"Id": "TaiwuHentai",
 			"Version": "0.0.8",
 			"DownloadUrl": "https://github.com/phorcys/Taiwu_mods/releases/download/rls181225/TaiwuHentai-0.0.8.zip"
@@ -302,8 +297,8 @@
 		},
 		{
 			"Id": "TaiwuEditor",
-			"Version": "1.0.10.6",
-			"DownloadUrl": "https://github.com/ciwei100000/Taiwu_mods/releases/download/release190904/TaiwuEditor-1.0.10.6.zip"
+			"Version": "1.0.10.7",
+			"DownloadUrl": "https://github.com/ciwei100000/Taiwu_mods/releases/download/release10022019/TaiwuEditor-1.0.10.7.zip"
 		},
 		{
 			"Id": "GongFaBook",
