@@ -1,6 +1,7 @@
 ﻿using Harmony12;
 using System;
 using System.Collections.Generic;
+using GameData;
 
 namespace TaiwuEditor
 {
@@ -28,7 +29,7 @@ namespace TaiwuEditor
                     {
                         // baseEventDate[1]是互动的NPC的ID
                         int npcId = baseEventDate[1];
-                        if (DateFile.instance.actorsDate.ContainsKey(npcId))
+                        if (Characters.HasChar(npcId))
                         {
                             //try catch 目前用于跳过个别时候载入游戏时触发过月后npc互动会报错的问题
                             try
@@ -46,7 +47,8 @@ namespace TaiwuEditor
                         }
                     }
                 }
-                // 最大印象
+                /// <summary>最大印象</summary>
+                /// <see cref="DateFile.ChangeActorLifeFace"/>
                 if (Main.enabled && Main.settings.basicUISettings[6])
                 {
                     int mainEventId = baseEventDate[2];
@@ -56,7 +58,7 @@ namespace TaiwuEditor
                     if (eventType == 0)
                     {
                         int npcId = baseEventDate[1];
-                        if (DateFile.instance.actorsDate.ContainsKey(npcId))
+                        if (Characters.HasChar(npcId))
                         {
                             //try catch 目前用于跳过个别特殊npc本身无印象数据会报错的问题
                             try
@@ -68,7 +70,8 @@ namespace TaiwuEditor
                                 {
                                     // 时装身份ID
                                     int faceId = int.Parse(DateFile.instance.GetItemDate(fashionDress, 15));
-                                    if (faceId > 0)
+                                    /// <seealso cref="DateFile.ResetActorLifeFace"/>
+                                    if (faceId != 0)
                                     {
                                         DateFile.instance.actorLife[npcId].Remove(1001);
                                         // 添加新印象,100%
@@ -134,7 +137,6 @@ namespace TaiwuEditor
                         int scoreGain = int.Parse(DateFile.instance.gongFaDate[___studySkillId][2]);
                         // 清零因为实战而获得的突破成功率加成
                         DateFile.instance.addGongFaStudyValue = 0;
-                        //DateFile.instance.actorGongFas[mainActorId][___studySkillId][0] = 100;
                         DateFile.instance.ChangeActorGongFa(mainActorId, ___studySkillId, 100, 0, 0, false);
                         // 突破成功一次增加的遗惠
                         DateFile.instance.AddActorScore(302, scoreGain * 100);
@@ -189,7 +191,6 @@ namespace TaiwuEditor
                 /// 返回的，防止奇遇终点是战斗时，无限进入战斗。
                 if (___keepHiding)
                 {
-                    //___keepHiding = false;
                     return true;
                 }
 
@@ -224,7 +225,9 @@ namespace TaiwuEditor
                     Main.logger.Log($"[TaiwuEditor]OpenStory: StoryPlayer: {StorySystem.instance.storyPlayer.name}");
                     Main.logger.Log($"[TaiwuEditor]OpenStory: StoryPlayer_placeid: {StorySystem.instance.storyPlayer.parent.parent.parent.name}");
 #endif
-                    if (HelperBase.EventSetup(storyEndEventId, __instance.storySystemPartId, __instance.storySystemPlaceId, __instance.storySystemStoryId))
+                    if (HelperBase.EventSetup(StorySystem.StoryBaseManager, storyEndEventId,
+                                              __instance.storySystemPartId, __instance.storySystemPlaceId,
+                                              __instance.storySystemStoryId))
                     {
 #if DEBUG
                         Main.logger.Log("EventSetup successful");

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-
+using GameData;
 using UnityEngine;
 
 namespace TaiwuEditor
@@ -66,8 +66,8 @@ namespace TaiwuEditor
         private static ActorPropertyHelper instance;
         /// <summary>修改框数值缓存</summary>
         private readonly Dictionary<int, string> fieldValuesCache;
-        /// <summary>当前编辑的角色在游戏中的数据</summary>
-        private Dictionary<int, string> currentActorDate;
+        /*/// <summary>当前编辑的角色在游戏中的数据</summary>
+        private Dictionary<int, string> currentActorDate;*/
         /// <summary>修改框标签宽度</summary>
         public static float fieldHelperLblWidth = 90f;
         /// <summary>修改框宽度</summary>
@@ -203,7 +203,7 @@ namespace TaiwuEditor
             GUILayout.EndHorizontal();
         }
 
-        /// <summary>
+        /*/// <summary>
         /// 获得当前编辑的角色属性数据
         /// </summary>
         /// <param name="index">对应属性的编号</param>
@@ -217,7 +217,7 @@ namespace TaiwuEditor
             }
             text = "";
             return false;
-        }
+        }*/
 
         /// <summary>
         /// 当前编辑角色改变时将游戏数值同步到所有属性修改框里
@@ -227,9 +227,7 @@ namespace TaiwuEditor
         /// <param name="actorId">需要同步数据的角色Id</param>
         private void UpdateAllFields(int actorId)
         {
-            var dateFile = DateFile.instance;
-            if (dateFile == null || dateFile.actorsDate == null
-                || !dateFile.actorsDate.TryGetValue(actorId, out currentActorDate))
+            if (DateFile.instance == null)
             {
                 if (fieldValuesCache.Count > 0)
                     foreach (var field in fieldNames)
@@ -243,7 +241,7 @@ namespace TaiwuEditor
                 currentActorId = actorId;
                 foreach (var field in fieldNames)
                 {
-                    FetchFieldValueHelper(dateFile, currentActorDate, field.Key);
+                    FetchFieldValueHelper(DateFile.instance, field.Key);
                 }
             }
         }
@@ -260,14 +258,13 @@ namespace TaiwuEditor
         private void UpdateField(int resid)
         {
             var dateFile = DateFile.instance;
-            var actorMenu = ActorMenu.instance;
-            if (dateFile == null || currentActorDate == null || actorMenu == null)
+            if (dateFile == null)
             {
                 fieldValuesCache.Remove(resid);
             }
             else
             {
-                FetchFieldValueHelper(dateFile, currentActorDate, resid);
+                FetchFieldValueHelper(dateFile, resid);
             }
         }
 
@@ -279,7 +276,7 @@ namespace TaiwuEditor
         /// <param name="actorDate">不能为null</param>
         /// <param name="resid"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void FetchFieldValueHelper(DateFile dateFileInstance, Dictionary<int, string> actorDate, int resid)
+        private void FetchFieldValueHelper(DateFile dateFileInstance, int resid)
         {
             switch (resid)
             {
@@ -290,14 +287,26 @@ namespace TaiwuEditor
                     fieldValuesCache[resid] = dateFileInstance.Health(currentActorId).ToString();
                     break;
                 default:
-                    if (!actorDate.TryGetValue(resid, out string text))
+                    var value = Characters.GetCharProperty(currentActorId, resid);
+                    if (value == null)
                     {
-                        if (!dateFileInstance.presetActorDate.TryGetValue(currentActorId, resid, out text, actorDate))
+                        int id;
+                        if (Characters.HasChar(currentActorId))
                         {
-                            text = "0";
+                            string charProperty = Characters.GetCharProperty(currentActorId, 997);
+                            id = (charProperty != null) ? int.Parse(charProperty) : currentActorId;
+                        }
+                        else
+                        {
+                            id = currentActorId;
+                        }
+                        Dictionary<int, string> tmpDict = null;  // 无意义，只为了省略泛型函数的参数
+                        if (!DateFile.instance.presetActorDate.TryGetValue(id, resid, out value, tmpDict))
+                        {
+                            value = "0";
                         }
                     }
-                    fieldValuesCache[resid] = text;
+                    fieldValuesCache[resid] = value;
                     break;
             }
         }
@@ -351,7 +360,7 @@ namespace TaiwuEditor
                     instance.gongFaExperienceP = value;
                     break;
                 default:
-                    currentActorDate[resid] = text;
+                    Characters.SetCharProperty(currentActorId, resid, text);
                     break;
             }
         }

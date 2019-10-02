@@ -11,7 +11,7 @@ namespace TaiwuEditor
     public static class Main
     {
         /// <summary>版本</summary>
-        public static readonly string version = "V1.0.11";
+        public static readonly string version = "V1.0.10.7";
         /// <summary>是否启用</summary>
         internal static bool enabled;
         /// <summary>日志</summary>

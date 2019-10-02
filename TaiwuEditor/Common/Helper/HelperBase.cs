@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using UnityEngine;
+using GameData;
 
 namespace TaiwuEditor
 {
@@ -65,7 +66,7 @@ namespace TaiwuEditor
                 case 0:
                     if (instance.actorInjuryDate != null && instance.actorInjuryDate.TryGetValue(actorId, out Dictionary<int, int> injuries))
                     {
-                        List<int> injuryIds = new List<int>(injuries.Keys);
+                        var injuryIds = new List<int>(injuries.Keys);
                         for (int i = 0; i < injuryIds.Count; i++)
                         {
                             injuries.Remove(injuryIds[i]);
@@ -74,7 +75,7 @@ namespace TaiwuEditor
                     if (battle && instance.ActorIsInBattle(actorId) != 0 && instance.battleActorsInjurys != null
                         && instance.battleActorsInjurys.TryGetValue(actorId, out Dictionary<int, int[]> battleInjuries))
                     {
-                        List<int> battleInjuriesIds = new List<int>(battleInjuries.Keys);
+                        var battleInjuriesIds = new List<int>(battleInjuries.Keys);
                         for (int i = 0; i < battleInjuriesIds.Count; i++)
                         {
                             battleInjuries.Remove(battleInjuriesIds[i]);
@@ -82,13 +83,12 @@ namespace TaiwuEditor
                     }
                     break;
                 case 1:
-                    if (instance.actorsDate != null && instance.actorsDate.TryGetValue(actorId, out Dictionary<int, string> actorData))
-                    {
+                    if (Characters.HasChar(actorId))
                         for (int i = 0; i < 6; i++)
                         {
-                            actorData[i + 51] = "0";
+                            Characters.SetCharProperty(actorId, 51 + i, "0");
                         }
-                    }
+
                     if (battle && instance.ActorIsInBattle(actorId) != 0 && instance.battleActorsPoisons != null
                         && instance.battleActorsPoisons.TryGetValue(actorId, out int[] poisons))
                     {
@@ -99,9 +99,9 @@ namespace TaiwuEditor
                     }
                     break;
                 case 2:
-                    if (instance.actorsDate.TryGetValue(actorId, out actorData))
+                    if (Characters.HasChar(actorId))
                     {
-                        actorData[39] = "0";
+                        Characters.SetCharProperty(actorId, 39, "0");
                     }
                     if (battle && instance.ActorIsInBattle(actorId) != 0 && instance.battleActorsMianQi != null)
                     {
@@ -133,27 +133,28 @@ namespace TaiwuEditor
         /// 设置人物相枢入邪值
         /// </summary>
         /// <param name="instance">DateFile实例</param>
-        /// <param name="actorid">角色ID</param>
+        /// <param name="actorId">角色ID</param>
         /// <param name="value">目标入邪值</param>
         // 根据DateFile.SetActorXXChange重写
-        public static void SetActorXXValue(DateFile instance, int actorid, int value)
+        public static void SetActorXXValue(DateFile instance, int actorId, int value)
         {
-            if (instance == null || instance.actorLife == null || !instance.actorLife.ContainsKey(actorid))
+            if (instance == null || instance.actorLife == null || !instance.actorLife.ContainsKey(actorId))
             {
                 return;
             }
             value = Mathf.Max(value, 0);
             // 清空角色相支持度缓存
-            instance.AICache_ActorPartValue.Remove(actorid);
-            instance.AICache_PartValue.Remove(int.Parse(instance.GetActorDate(actorid, 19, false)));
+            instance.AICache_ActorPartValue.Remove(actorId);
+            instance.AICache_PartValue.Remove(int.Parse(instance.GetActorDate(actorId, 19, false)));
+            int originalXXValue = DateFile.instance.GetLifeDate(actorId, 501, 0);
             // 设置入邪值
-            if (instance.HaveLifeDate(actorid, 501))
+            if (instance.HaveLifeDate(actorId, 501))
             {
-                instance.actorLife[actorid][501][0] = Mathf.Max(value, 0);
+                instance.actorLife[actorId][501][0] = Mathf.Max(value, 0);
             }
             else
             {
-                instance.actorLife[actorid].Add(501, new List<int>
+                instance.actorLife[actorId].Add(501, new List<int>
                 {
                     Mathf.Max(value, 0)
                 });
@@ -162,38 +163,77 @@ namespace TaiwuEditor
             if (value >= 200)
             {
                 // 是否是敌方阵营（如相枢）
-                if (int.Parse(instance.GetActorDate(actorid, 6, false)) == 0)
+                if (int.Parse(instance.GetActorDate(actorId, 6, false)) == 0)
                 {
                     // 化魔之后加入敌方
-                    instance.actorsDate[actorid][6] = "1";
+                    Characters.SetCharProperty(actorId, 6, "1");
                     // 获取该角色的坐标
-                    List<int> actorAtPlace = instance.GetActorAtPlace(actorid);
+                    List<int> actorAtPlace = instance.GetActorAtPlace(actorId);
                     if (actorAtPlace != null)
                     {
                         // 添加角色经历
-                        PeopleLifeAI.instance.AISetMassage(84, actorid, actorAtPlace[0], actorAtPlace[1], null, -1, true);
+                        PeopleLifeAI.instance.AISetMassage(84, actorId, actorAtPlace[0], actorAtPlace[1], null, -1, true);
                     }
                 }
                 // 相枢化魔特性
-                instance.ChangeActorFeature(actorid, 9997, 9999);
-                instance.ChangeActorFeature(actorid, 9998, 9999);
+                instance.ChangeActorFeature(actorId, 9997, 9999);
+                instance.ChangeActorFeature(actorId, 9998, 9999);
+                if (originalXXValue < 200)
+                {
+                    if (actorId == DateFile.instance.mianActorId)
+                    {
+                        GEvent.OnEvent(eEvents.MainActorXXConvertFully);
+                        TipsWindow.instance.ShowNotifyEvent(eNotifyEvents.FallPossessed);
+                    }
+                    else if (DateFile.instance.IsMainActorMate(actorId))
+                    {
+                        TipsWindow.instance.ShowNotifyEvent(eNotifyEvents.MateFallPossessed, actorId);
+                    }
+                    else if (DateFile.instance.IsTaiWuVillager(actorId))
+                    {
+                        TipsWindow.instance.ShowNotifyEvent(eNotifyEvents.VillagerFallPossessed, actorId);
+                    }
+                }
             }
             else
             {
                 // 转换为非敌方阵营
-                instance.actorsDate[actorid].Remove(6);
+                Characters.RemoveCharProperty(actorId, 6);
                 // 入邪
                 if (value >= 100)
                 {
                     // 相枢入邪特性
-                    instance.ChangeActorFeature(actorid, 9997, 9998);
-                    instance.ChangeActorFeature(actorid, 9999, 9998);
+                    instance.ChangeActorFeature(actorId, 9997, 9998);
+                    instance.ChangeActorFeature(actorId, 9999, 9998);
+                    if (actorId == DateFile.instance.mianActorId)
+                    {
+                        GEvent.OnEvent(eEvents.MainActorXXConvertPartial);
+                    }
+                    if (originalXXValue < 100)
+                    {
+                        if (actorId == DateFile.instance.mianActorId)
+                        {
+                            TipsWindow.instance.ShowNotifyEvent(eNotifyEvents.FallEvil);
+                        }
+                        else if (DateFile.instance.IsMainActorMate(actorId))
+                        {
+                            TipsWindow.instance.ShowNotifyEvent(eNotifyEvents.MateFallEvil, actorId);
+                        }
+                        else if (DateFile.instance.IsTaiWuVillager(actorId))
+                        {
+                            TipsWindow.instance.ShowNotifyEvent(eNotifyEvents.VillagerFallEvil, actorId);
+                        }
+                    }
                 }
                 else
                 {
                     // 正常
-                    instance.ChangeActorFeature(actorid, 9998, 9997);
-                    instance.ChangeActorFeature(actorid, 9999, 9997);
+                    instance.ChangeActorFeature(actorId, 9998, 9997);
+                    instance.ChangeActorFeature(actorId, 9999, 9997);
+                    if (actorId == DateFile.instance.mianActorId)
+                    {
+                        GEvent.OnEvent(eEvents.MianActorXXConvertEnd);
+                    }
                 }
             }
         }
@@ -321,7 +361,8 @@ namespace TaiwuEditor
         /// <param name="storysystemstoryId">当前奇遇ID</param>
         /// <returns>是否成功</returns>
         /// Inspired by <see cref="StorySystem.EventSetup"/>
-        public static bool EventSetup(int endeventid, int storysystempartid, int storysystemplaceid, int storysystemstoryId)
+        public static bool EventSetup(StoryBaseManager storyBaseManager, int endeventid, int storysystempartid,
+                                      int storysystemplaceid, int storysystemstoryId)
         {
             if (endeventid != 0)
             {
@@ -410,28 +451,35 @@ namespace TaiwuEditor
                         DateFile.instance.SetEvent(new int[4]
                         {
                             0,
-                            7010 + int.Parse(DateFile.instance.GetActorDate(_storyValue, 19, addValue: false)) * 100,
+                            7010 + int.Parse(DateFile.instance.GetActorDate(_storyValue, 19, false)) * 100,
                             endeventid,
                             _storyValue
                         }, true, true);
                         break;
                     // 其他情况
                     default:
-                        DateFile.instance.SetEvent(new int[3]
+                        if (!storyBaseManager.StoryBases.ContainsKey(storysystemstoryId))
                         {
-                            0,
-                            -1,
-                            endeventid
-                        }, true, true);
+                            DateFile.instance.SetEvent(new int[3]
+                            {
+                                0,
+                                -1,
+                                endeventid
+                            }, true, true);
+                        }
+                        else
+                        {
+                            GEvent.OnEvent(eEvents.StoryEndEvent, StorySystem.instance.storySystemStoryId, endeventid);
+                        }
                         break;
                 }
-                GEvent.OnEvent(eEvents.StoryEndEvent, StorySystem.instance.storySystemStoryId, endeventid);
                 return true;
             }
             else
             {
-                // 如果奇遇终点不存在，直接移除改奇遇
+                // 如果奇遇终点不存在，直接移除奇遇
                 DateFile.instance.SetStory(true, storysystempartid, storysystemplaceid, 0, 0);
+                StorySystem.instance.StoryEnd();
                 return false;
             }
         }
