@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Reflection.Emit;
+using GameData;
 using Harmony12;
 using UnityModManagerNet;
 using UnityEngine;
@@ -198,7 +199,13 @@ namespace LKX_CheatMaxPeople
                     if(!Main.teamActorId.Contains(family)) Main.teamActorId.Add(family);
                 }
             }
+            
+            if (GUILayout.Button("测试状态"))
+            {
+                
+            }
 
+            /*
             if (GUILayout.Button("测试传剑"))
             {
                 ActorMenu.instance.acotrId = Main.selectActorId;
@@ -209,6 +216,7 @@ namespace LKX_CheatMaxPeople
             {
                 ActorScore.instance.ShowActorScoreWindow(DateFile.instance.mianActorId);
             }
+            */
             GUILayout.EndHorizontal();
 
             if (Main.teamActorId.Count > 0)
@@ -339,6 +347,24 @@ namespace LKX_CheatMaxPeople
         }
     }
 
+    [HarmonyPatch(typeof(NewGame), "SetNewGameDate")]
+    public class CeshiNewGame_SetNewGameDate
+    {
+        static void Prefix()
+        {
+
+        }
+    }
+
+    [HarmonyPatch(typeof(NewGame), "Start")]
+    public class CeshiUiLoading_Show
+    {
+        static void Prefix()
+        {
+
+        }
+    }
+
     [HarmonyPatch(typeof(UIDate), "GetMaxManpower")]
     public class MaxPeople_For_UIDate_GetBaseMaxManpower
     {
@@ -367,8 +393,10 @@ namespace LKX_CheatMaxPeople
         /// </summary>
         public static void QuQuCheat()
         {
+            /*
             DateFile df = DateFile.instance;
             List<int> boxQuQu = new List<int>();
+
             foreach (int[] box in df.cricketBoxDate.Values)
             {
                 if (box[0] != -97) boxQuQu.Add(box[0]);
@@ -384,6 +412,18 @@ namespace LKX_CheatMaxPeople
                 if ((df.actorItemsDate[10001].ContainsKey(item.Key) || df.actorItemsDate[-999].ContainsKey(item.Key) || boxQuQu.Contains(item.Key)) && item.Value[999] == "10000")
                 {
                     if (item.Value[901] != "0" && item.Value[2007] != "0") item.Value[2007] = "0";
+                }
+            }
+            */
+
+            int[] ququIds = Items.GetAllAliveCricketIds();
+            for (int i = 0; i < ququIds.Length; i++)
+            {
+                Dictionary<int, string> item = Items.GetItem(ququIds[i]);
+                if (item[901] != "0" && item[2007] != "0")
+                {
+                    item[2007] = "0";
+                    Items.SetItem(ququIds[i], item);
                 }
             }
         }
@@ -411,11 +451,14 @@ namespace LKX_CheatMaxPeople
                 if (!foodType.Contains(int.Parse(type))) continue;
                 
                 Dictionary<int, string> foodData = new Dictionary<int, string>();
+                /*
                 if (!df.itemsDate.TryGetValue(itemId, out foodData))
                 {
                     Main.logger.Log("失败itemId");
                     continue;
                 }
+                */
+                foodData = Items.GetItem(itemId);
                 
                 CompareFoodsParams(id, foodData, ref foods);
 
@@ -466,7 +509,8 @@ namespace LKX_CheatMaxPeople
                 df.GetItem(df.mianActorId, makeItemId, 1, false, -1, 0);
                 foreach (KeyValuePair<int, string> pair in food.Value)
                 {
-                    df.itemsDate[makeItemId][pair.Key] = pair.Value;
+                    Items.SetItemProperty(makeItemId, pair.Key, pair.Value);
+                    //df.itemsDate[makeItemId][pair.Key] = pair.Value;
                 }
             }
         }
@@ -496,9 +540,18 @@ namespace LKX_CheatMaxPeople
             }
         }
     }
+    
+    [HarmonyPatch(typeof(DateFile), "GetMaxItemSize")]
+    public class LKXSetGetMaxItemSize_For_DateFile_GetMaxItemSize
+    {
+        static void Postfix(ref int __result)
+        {
+            if (Main.enabled && Main.settings.cheatWarehouseMaxSize) __result = 100000000;
+        }
+    }
 
-    [HarmonyPatch(typeof(Warehouse), "GetWarehouseMaxSize")]
-    public class LKXSetWarehouseMaxSize_For_Warehouse_GetWarehouseMaxSize
+    [HarmonyPatch(typeof(DateFile), "GetWarehouseMaxSize")]
+    public class LKXSetWarehouseMaxSize_For_DateFile_GetWarehouseMaxSize
     {
         static void Postfix(ref int __result)
         {
